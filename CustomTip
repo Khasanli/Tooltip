@@ -394,29 +394,29 @@ struct TipEnabledView<Content: View>: View {
 }
 
 struct OnboardingTips {
-    static let welcomeTip = CustomTip(
-        id: "welcome-tip",
-        title: "Welcome!",
-        message: "Let's take a quick tour of the app.",
-        imageName: "hand.wave",
+    static let notificationTip = CustomTip(
+        id: "notification-tip",
+        title: "Notifications!",
+        message: "Check your notifications and updates here.",
+        imageName: "bell.badge",
         position: .bottom,
         sequenceIndex: 0
     )
     
-    static let addColorTip = CustomTip(
-        id: "add-color-tip",
-        title: "Add Color",
-        message: "You can add color to your order here.",
-        imageName: "paintpalette",
+    static let paySomeoneTip = CustomTip(
+        id: "pay-someone-tip",
+        title: "Pay someone",
+        message: "To wallet, bank or mobile number.",
+        imageName: "creditcard.and.123",
         position: .bottom,
         sequenceIndex: 1
     )
     
-    static let settingsTip = CustomTip(
-        id: "settings-tip",
-        title: "Settings",
-        message: "Access your preferences and settings here.",
-        imageName: "gear",
+    static let requestMoneyTip = CustomTip(
+        id: "request-money-tip",
+        title: "Request money",
+        message: "Request money from OroboPay users.",
+        imageName: "hand.raised",
         position: .bottom,
         sequenceIndex: 2
     )
