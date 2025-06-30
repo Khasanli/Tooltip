@@ -1,0 +1,179 @@
+//
+//  PaymentView.swift
+//  TestingTip
+//
+//  Created by Khayala Hasanli on 28.06.25.
+//
+
+import SwiftUI
+
+struct PaymentAppView: View {
+    @ObservedObject var sequenceManager = TipSequenceManager.shared
+    let totalTips = 3
+
+    var body: some View {
+            NavigationView {
+                TipEnabledView {
+
+                VStack(spacing: 0) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Text("Hi Khayala,")
+                                .font(.title2)
+                                .fontWeight(.medium)
+                                .foregroundColor(.black)
+                                .onAppear {
+                                    sequenceManager.startSequence()
+                                }
+                            
+                            Spacer()
+                            
+                            Button(action: {}) {
+                                Image(systemName: "bell")
+                                    .font(.title2)
+                                    .foregroundColor(.gray)
+                            }
+                            .customPopoverTip(OnboardingTips.welcomeTip, totalTipsInSequence: totalTips)
+                        }
+                        
+                        // Balance section
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("1,234.00")
+                                .font(.system(size: 48, weight: .bold))
+                                .foregroundColor(.black)
+                            
+                            
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 20)
+                    
+                    VStack(alignment: .leading, spacing: 24) {
+                        Text("Here are some things you can do")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .padding(.horizontal, 20)
+                        
+                        VStack(spacing: 16) {
+                            HStack(spacing: 16) {
+                                ActionCard(
+                                    icon: "arrow.up.right",
+                                    title: "Pay someone",
+                                    subtitle: "To wallet, bank or\nmobile number",
+                                    backgroundColor: Color.purple.opacity(0.1)
+                                )
+                                .customPopoverTip(OnboardingTips.addColorTip, totalTipsInSequence: totalTips)
+                                
+                                ActionCard(
+                                    icon: "arrow.down.left",
+                                    title: "Request money",
+                                    subtitle: "Request money from\nOroboPay users",
+                                    backgroundColor: Color.green.opacity(0.1)
+                                )
+                                .customPopoverTip(OnboardingTips.settingsTip, totalTipsInSequence: totalTips)
+                            }
+                            
+                            HStack(spacing: 16) {
+                                ActionCard(
+                                    icon: "phone",
+                                    title: "Buy airtime",
+                                    subtitle: "Top-up or send\nairtime across Africa",
+                                    backgroundColor: Color.gray.opacity(0.1)
+                                )
+                                
+                                ActionCard(
+                                    icon: "creditcard",
+                                    title: "Pay bill",
+                                    subtitle: "Zero transaction fees\nwhen you pay",
+                                    backgroundColor: Color.gray.opacity(0.1)
+                                )
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                                                
+                        Spacer()
+                    }
+                    .padding(.top, 32)
+                    
+                }
+                .background(Color.white)
+            }
+        }
+    }
+}
+
+struct ActionCard: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let backgroundColor: Color
+    
+    var body: some View {
+        Button(action: {}) {
+            VStack(alignment: .leading, spacing: 12) {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .foregroundColor(.black)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.black)
+                    
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.leading)
+                }
+                
+                Spacer()
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 120)
+            .padding(16)
+            .background(backgroundColor)
+            .cornerRadius(16)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+struct TabBarItem: View {
+    let icon: String
+    let isSelected: Bool
+    let isCenter: Bool
+    
+    init(icon: String, isSelected: Bool, isCenter: Bool = false) {
+        self.icon = icon
+        self.isSelected = isSelected
+        self.isCenter = isCenter
+    }
+    
+    var body: some View {
+        Button(action: {}) {
+            ZStack {
+                if isCenter {
+                    Circle()
+                        .fill(Color.blue)
+                        .frame(width: 50, height: 50)
+                    
+                    Image(systemName: "circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.white)
+                } else {
+                    Image(systemName: icon)
+                        .font(.title2)
+                        .foregroundColor(isSelected ? .blue : .gray)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+struct PaymentAppView_Previews: PreviewProvider {
+    static var previews: some View {
+        PaymentAppView()
+    }
+}
