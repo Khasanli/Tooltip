@@ -33,10 +33,9 @@ struct PaymentAppView: View {
                                     .font(.title2)
                                     .foregroundColor(.gray)
                             }
-                            .customPopoverTip(OnboardingTips.welcomeTip, totalTipsInSequence: totalTips)
+                            .customPopoverTip(OnboardingTips.notificationTip, totalTipsInSequence: totalTips)
                         }
                         
-                        // Balance section
                         VStack(alignment: .leading, spacing: 8) {
                             Text("1,234.00")
                                 .font(.system(size: 48, weight: .bold))
@@ -62,7 +61,7 @@ struct PaymentAppView: View {
                                     subtitle: "To wallet, bank or\nmobile number",
                                     backgroundColor: Color.purple.opacity(0.1)
                                 )
-                                .customPopoverTip(OnboardingTips.addColorTip, totalTipsInSequence: totalTips)
+                                .customPopoverTip(OnboardingTips.paySomeoneTip, totalTipsInSequence: totalTips)
                                 
                                 ActionCard(
                                     icon: "arrow.down.left",
@@ -70,7 +69,7 @@ struct PaymentAppView: View {
                                     subtitle: "Request money from\nOroboPay users",
                                     backgroundColor: Color.green.opacity(0.1)
                                 )
-                                .customPopoverTip(OnboardingTips.settingsTip, totalTipsInSequence: totalTips)
+                                .customPopoverTip(OnboardingTips.requestMoneyTip, totalTipsInSequence: totalTips)
                             }
                             
                             HStack(spacing: 16) {
