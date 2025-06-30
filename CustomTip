@@ -1,0 +1,423 @@
+//
+//  CustomTip.swift
+//  TestingTip
+//
+//  Created by Khayala Hasanli on 24.06.25.
+//
+
+import SwiftUI
+
+struct CustomTip {
+    let id: String
+    let title: String
+    let message: String?
+    let imageName: String?
+    let position: TooltipPosition?
+    let sequenceIndex: Int?
+
+    init(id: String, title: String, message: String? = nil, imageName: String? = nil, position: TooltipPosition?, sequenceIndex: Int? = nil) {
+        self.id = id
+        self.title = title
+        self.message = message
+        self.imageName = imageName
+        self.position = position
+        self.sequenceIndex = sequenceIndex
+    }
+    
+    enum TooltipPosition: String {
+        case top
+        case bottom
+    }
+}
+
+class TipSequenceManager: ObservableObject {
+    @Published var currentSequenceIndex: Int = 0
+    @Published var isSequenceActive: Bool = false
+    @Published var completedTips: Set<String> = []
+    @Published var sequenceUpdateTrigger: Int = 0
+    @Published var isTransitioning: Bool = false
+    
+    static let shared = TipSequenceManager()
+    
+    private init() {}
+    
+    func startSequence() {
+        currentSequenceIndex = 0
+        isSequenceActive = true
+        completedTips.removeAll()
+        sequenceUpdateTrigger += 1
+    }
+    
+    func nextTip() {
+        isTransitioning = true
+        currentSequenceIndex += 1
+        sequenceUpdateTrigger += 1
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.isTransitioning = false
+        }
+    }
+    
+    func previousTip() {
+        if currentSequenceIndex > 0 {
+            isTransitioning = true
+            currentSequenceIndex -= 1
+            sequenceUpdateTrigger += 1
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.isTransitioning = false
+            }
+        }
+    }
+    
+    func endSequence() {
+        isSequenceActive = false
+        currentSequenceIndex = 0
+        sequenceUpdateTrigger = 0
+        isTransitioning = false
+    }
+    
+    func markTipCompleted(_ tipId: String) {
+        completedTips.insert(tipId)
+    }
+    
+    func shouldShowTip(_ tip: CustomTip) -> Bool {
+        if !isSequenceActive { return false }
+        
+        guard let sequenceIndex = tip.sequenceIndex else { return false }
+        return sequenceIndex == currentSequenceIndex
+    }
+}
+
+class TipOverlayManager: ObservableObject {
+    @Published var activeTip: CustomTip?
+    @Published var tipPosition: CGPoint = .zero
+    @Published var isPresented: Bool = false
+    @Published var highlightedViewFrame: CGRect = .zero
+    @Published var totalTipsInSequence: Int = 0
+    @Published var hideTipView: Bool = false
+
+    static let shared = TipOverlayManager()
+    
+    private init() {}
+    
+    func showTip(_ tip: CustomTip, at position: CGPoint, viewFrame: CGRect, totalTips: Int = 1) {
+        activeTip = tip
+        totalTipsInSequence = totalTips
+        
+        withAnimation(.easeInOut(duration: 0.6)) {
+            tipPosition = position
+            highlightedViewFrame = viewFrame
+        }
+        
+        if !isPresented {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                isPresented = true
+            }
+        }
+    }
+    
+    func hideTip() {
+        withAnimation(.linear(duration: 0.2)) {
+            highlightedViewFrame = UIScreen.main.bounds
+            hideTipView = true
+        }
+
+        withAnimation(.easeInOut(duration: 0.2).delay(0.3)) {
+            isPresented = false
+        }
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            self.activeTip = nil
+            self.highlightedViewFrame = .zero
+            self.hideTipView = false
+        }
+        
+    }
+}
+
+struct TipOverlayView: View {
+    @ObservedObject var manager = TipOverlayManager.shared
+    @ObservedObject var sequenceManager = TipSequenceManager.shared
+    
+    var body: some View {
+        if manager.isPresented, let tip = manager.activeTip {
+            ZStack {
+                // Smooth morphing cutout overlay
+                SmoothCutoutOverlay(highlightFrame: manager.highlightedViewFrame)
+                    .onTapGesture {
+                        manager.hideTip()
+                    }
+                
+                // Tip content with smooth positioning
+                if !manager.hideTipView {
+                    
+                    VStack(spacing: 0) {
+                        Spacer()
+                            .frame(height: manager.tipPosition.y)
+                        
+                        SequentialTipView(tip: tip) {
+                            manager.hideTip()
+                        }
+                        .padding(.horizontal, 20)
+                        
+                        Spacer()
+                        
+                        
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+            .transition(.opacity)
+            .ignoresSafeArea(.all)
+            .zIndex(999)
+        }
+    }
+}
+
+struct SmoothCutoutOverlay: View {
+    let highlightFrame: CGRect
+    
+    var body: some View {
+        Color.black.opacity(0.6)
+            .mask(
+                Rectangle()
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .frame(
+                                width: highlightFrame.width + 16,
+                                height: highlightFrame.height + 16
+                            )
+                            .position(
+                                x: highlightFrame.midX,
+                                y: highlightFrame.midY
+                            )
+                            .blendMode(.destinationOut)
+                            .animation(.easeInOut(duration: 0.6), value: highlightFrame) // Smooth morphing
+                    )
+            )
+    }
+}
+
+struct SequentialTipView: View {
+    let tip: CustomTip
+    let onDismiss: () -> Void
+    @ObservedObject var sequenceManager = TipSequenceManager.shared
+    @ObservedObject var manager = TipOverlayManager.shared
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header with close button
+            HStack(spacing: 12) {
+                if let imageName = tip.imageName {
+                    Image(systemName: imageName)
+                        .resizable()
+                        .frame(width: 20, height: 20)
+                        .foregroundColor(.primary)
+                }
+                
+                Text(tip.title)
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                
+                Spacer()
+                
+                if sequenceManager.isSequenceActive, let sequenceIndex = tip.sequenceIndex {
+                    Text("\(sequenceIndex + 1) of \(manager.totalTipsInSequence)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.gray.opacity(0.2))
+                        .cornerRadius(8)
+                }
+                
+                Button(action: {
+                    sequenceManager.endSequence()
+                    onDismiss()
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.secondary)
+                        .font(.system(size: 20))
+                }
+            }
+            
+            if let message = tip.message {
+                Text(message)
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            
+            if sequenceManager.isSequenceActive {
+                HStack {
+                    if sequenceManager.currentSequenceIndex > 0 {
+                        Button("Previous") {
+                            sequenceManager.previousTip()
+                        }
+                        .foregroundColor(.blue)
+                        .disabled(sequenceManager.isTransitioning)
+                    }
+                    
+                    Spacer()
+                    
+                    if sequenceManager.currentSequenceIndex < manager.totalTipsInSequence - 1 {
+                        Button("Next") {
+                            sequenceManager.markTipCompleted(tip.id)
+                            sequenceManager.nextTip()
+                        }
+                        .foregroundColor(.blue)
+                        .fontWeight(.semibold)
+                        .disabled(sequenceManager.isTransitioning)
+                    } else {
+                        Button("Done") {
+                            sequenceManager.markTipCompleted(tip.id)
+                            sequenceManager.endSequence()
+                            onDismiss()
+                        }
+                        .foregroundColor(.blue)
+                        .fontWeight(.semibold)
+                        .disabled(sequenceManager.isTransitioning)
+                    }
+                }
+                .padding(.top, 8)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .background(Color(UIColor.systemBackground))
+        .cornerRadius(16)
+        .shadow(color: Color.black.opacity(0.15), radius: 12, x: 0, y: 6)
+    }
+}
+
+struct ViewPositionKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        value = nextValue()
+    }
+}
+
+struct TipHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
+    }
+}
+
+struct CustomPopoverTip: ViewModifier {
+    let tip: CustomTip
+    let totalTipsInSequence: Int
+    @State private var viewPosition: CGPoint = .zero
+    @State private var viewFrame: CGRect = .zero
+    @ObservedObject var sequenceManager = TipSequenceManager.shared
+    
+    init(tip: CustomTip, totalTipsInSequence: Int = 1) {
+        self.tip = tip
+        self.totalTipsInSequence = totalTipsInSequence
+    }
+    
+    func body(content: Content) -> some View {
+        content
+            .background(
+                GeometryReader { geometry in
+                    Color.clear
+                        .preference(key: ViewPositionKey.self,
+                                    value: geometry.frame(in: .global))
+                }
+            )
+            .onPreferenceChange(ViewPositionKey.self) { frame in
+                viewFrame = frame
+                
+                guard let tipPosition = tip.position else {
+                    viewPosition = CGPoint(x: frame.origin.x, y: frame.minY)
+                    return
+                }
+                
+                switch tipPosition {
+                case .bottom:
+                    viewPosition = CGPoint(x: frame.origin.x, y: frame.maxY + 16)
+                case .top:
+                    viewPosition = CGPoint(x: frame.origin.x, y: frame.minY - 16)
+                }
+            }
+            .onChange(of: sequenceManager.sequenceUpdateTrigger) {
+                if sequenceManager.shouldShowTip(tip) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        showTip()
+                    }
+                }
+            }
+            .onTapGesture {
+                if !TipOverlayManager.shared.isPresented {
+                    showTip()
+                }
+            }
+    }
+    
+    private func showTip() {
+        let centerPoint = CGPoint(
+            x: viewPosition.x,
+            y: viewPosition.y
+        )
+        
+        TipOverlayManager.shared.showTip(
+            tip,
+            at: centerPoint,
+            viewFrame: viewFrame,
+            totalTips: totalTipsInSequence
+        )
+    }
+}
+
+extension View {
+    func customPopoverTip(_ tip: CustomTip, totalTipsInSequence: Int = 1) -> some View {
+        return self.modifier(CustomPopoverTip(tip: tip, totalTipsInSequence: totalTipsInSequence))
+    }
+}
+
+struct TipEnabledView<Content: View>: View {
+    let content: Content
+    
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+    
+    var body: some View {
+        ZStack {
+            content
+            TipOverlayView()
+        }
+    }
+}
+
+struct OnboardingTips {
+    static let welcomeTip = CustomTip(
+        id: "welcome-tip",
+        title: "Welcome!",
+        message: "Let's take a quick tour of the app.",
+        imageName: "hand.wave",
+        position: .bottom,
+        sequenceIndex: 0
+    )
+    
+    static let addColorTip = CustomTip(
+        id: "add-color-tip",
+        title: "Add Color",
+        message: "You can add color to your order here.",
+        imageName: "paintpalette",
+        position: .bottom,
+        sequenceIndex: 1
+    )
+    
+    static let settingsTip = CustomTip(
+        id: "settings-tip",
+        title: "Settings",
+        message: "Access your preferences and settings here.",
+        imageName: "gear",
+        position: .bottom,
+        sequenceIndex: 2
+    )
+}
